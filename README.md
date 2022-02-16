@@ -9,3 +9,5 @@ In general there are two pollutants of concern:
 
 Data was taken from [long temm health impact of air pollution](https://data.london.gov.uk/dataset/long-term-health-impacts-of-air-pollution).
 
+# GIS data
+https://data.london.gov.uk/dataset/statistical-gis-boundary-files-london
