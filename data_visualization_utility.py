@@ -77,39 +77,57 @@ def get_diseases_data_prediction(input_file_path):
     return df_diseases_data_prediction
 
 
-def create_plot_on_year(
-    diseases_summary_with_high_pollutant, diseases_summary_with_low_pollutant, year
-):
+def create_plot_on_year(merged_diseases_summary, year):
     plt.figure(figsize=(25, 10))
-    diseases_summary_with_high_pollutant_year = (
-        diseases_summary_with_high_pollutant[
-            diseases_summary_with_high_pollutant["year"] == year
-        ]
-        .groupby(["borough"], as_index=False)
-        .sum()
-    )
-    diseases_summary_with_low_pollutant_year = (
-        diseases_summary_with_low_pollutant[
-            diseases_summary_with_low_pollutant["year"] == year
-        ]
-        .groupby(["borough"], as_index=False)
-        .sum()
-    )
     fig, ax = plt.subplots(1, figsize=(20, 6))
-    ax = diseases_summary_with_high_pollutant_year.set_index("borough").plot(
-        kind="bar", ax=ax, y="incidence", color="C2"
-    )
-    diseases_summary_with_low_pollutant_year.set_index("borough").plot(
-        kind="bar", ax=ax, y="incidence", color="C1"
+    ax = merged_diseases_summary.set_index("borough").plot(
+        kind="bar", ax=ax, y=["low_exposure", "high_exposure"]
     )
     ax.set_title(
         "Diseases' Incident Collerated to Pollution Exposure for Each Boroughs in {year}".format(
             year=year
         )
     )
-    ax.legend(labels=["Incidence in High Pollution", "Incidence in Low Pollution"])
 
 
 def get_diseases_insight_based_on_filter(diseases_data_prediction, filters):
     sm = diseases_data_prediction.groupby(filters, as_index=False).sum()
     return sm
+
+
+def get_merged_summary_table(diseases_data_prediction):
+    diseases_summary = get_diseases_insight_based_on_filter(
+        diseases_data_prediction, ["borough", "disease", "year", "above_threshold"]
+    )
+    diseases_summary_with_low_pollutant = diseases_summary[
+        diseases_summary["above_threshold"] == 0
+    ]
+    diseases_summary_with_low_pollutant = diseases_summary_with_low_pollutant.drop(
+        ["above_threshold"], axis=1
+    )
+    diseases_summary_with_low_pollutant = diseases_summary_with_low_pollutant.rename(
+        {"incidence": "low"}, axis="index"
+    )
+    diseases_summary_with_high_pollutant = diseases_summary[
+        diseases_summary["above_threshold"] == 1
+    ]
+    diseases_summary_with_high_pollutant = diseases_summary_with_high_pollutant.drop(
+        ["above_threshold"], axis=1
+    )
+    diseases_summary_with_high_pollutant = diseases_summary_with_high_pollutant.rename(
+        {"incidence": "high"}, axis="index"
+    )
+    merged_disease_summary = diseases_summary_with_high_pollutant.copy().merge(
+        diseases_summary_with_low_pollutant.copy(),
+        how="inner",
+        left_on=["borough", "disease", "year"],
+        right_on=["borough", "disease", "year"],
+    )
+    merged_disease_summary = merged_disease_summary.rename(
+        columns={"incidence_x": "high_exposure", "incidence_y": "low_exposure"}
+    )
+    return merged_disease_summary
+
+
+def merged_disease_summary_for_year(merged_disease_summary, year):
+    return merged_disease_summary[merged_disease_summary["year"] == year]

@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import geopandas as gpd
 import plotly.graph_objects as go
+from data_visualization_utility import *
 
 # ## Visualizing the Impact of Air Pollution to Human's Health
 #
@@ -67,45 +68,6 @@ def create_plot_on_year(
     ax.legend(labels=["Incidence in High Pollution", "Incidence in Low Pollution"])
 
 
-def get_diseases_insight_based_on_filter(diseases_data_prediction, filters):
-    sm = diseases_data_prediction.groupby(filters, as_index=False).sum()
-    return sm
-
-
-def get_merged_summary_table(diseases_summary):
-    diseases_summary = get_diseases_insight_based_on_filter(
-        diseases_data_prediction, ["borough", "disease", "year", "above_threshold"]
-    )
-    diseases_summary_with_low_pollutant = diseases_summary[
-        diseases_summary["above_threshold"] == 0
-    ]
-    diseases_summary_with_low_pollutant = diseases_summary_with_low_pollutant.drop(
-        ["above_threshold"], axis=1
-    )
-    diseases_summary_with_low_pollutant = diseases_summary_with_low_pollutant.rename(
-        {"incidence": "low"}, axis="index"
-    )
-    diseases_summary_with_high_pollutant = diseases_summary[
-        diseases_summary["above_threshold"] == 1
-    ]
-    diseases_summary_with_high_pollutant = diseases_summary_with_high_pollutant.drop(
-        ["above_threshold"], axis=1
-    )
-    diseases_summary_with_high_pollutant = diseases_summary_with_high_pollutant.rename(
-        {"incidence": "high"}, axis="index"
-    )
-    merged_disease_summary = diseases_summary_with_high_pollutant.copy().merge(
-        diseases_summary_with_low_pollutant.copy(),
-        how="inner",
-        left_on=["borough", "disease", "year"],
-        right_on=["borough", "disease", "year"],
-    )
-    merged_disease_summary = merged_disease_summary.rename(
-        columns={"incidence_x": "high_exposure", "incidence_y": "low_exposure"}
-    )
-    return merged_disease_summary
-
-
 app = Dash(__name__)
 
 diseases_data_prediction_input_file_path = "data/diseases.csv"
@@ -114,11 +76,18 @@ diseases_data_prediction = get_diseases_data_prediction(
 )
 
 merged_disease_summary = get_merged_summary_table(diseases_data_prediction)
+merged_disease_summary_on_2016 = merged_disease_summary_for_year(
+    merged_disease_summary, 2016
+)
+sm = merged_disease_summary_on_2016.groupby(["borough"], as_index=False).sum()
 fig = px.bar(
-    merged_disease_summary,
+    sm,
     x="borough",
     y=["high_exposure", "low_exposure"],
     barmode="group",
+    title="Disease's Incidence as High and Low Exposure to Air Pollution (NOX) in {year}".format(
+        year=2016
+    ),
 )
 
 app.layout = html.Div(
@@ -126,7 +95,7 @@ app.layout = html.Div(
         html.H1(children="Data Visualization"),
         html.Div(
             children="""
-        Dash: A web application framework for your data.
+        Data Visualization for Air Pollution
     """
         ),
         dcc.Graph(id="example-graph", figure=fig),
