@@ -35,7 +35,7 @@ green_spaces_geomap = px.choropleth(
     locations=green_spaces_area_geomap.index,
     color="count",
     projection="mercator",
-    title="Green Spaces Area in Each Borough in Greater London Area (GLA)"
+    title="Green Spaces Area in Each Borough in Greater London Area (GLA)",
 )
 green_spaces_geomap.update_geos(fitbounds="locations", visible=False)
 
