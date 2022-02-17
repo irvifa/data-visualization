@@ -9,4 +9,4 @@ python -m black .
 
 ## How To
 
-- Run `data-visualization` notebook.
+- Run `data_visualization` notebook.
