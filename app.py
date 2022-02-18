@@ -39,24 +39,66 @@ green_spaces_geomap = px.choropleth(
 )
 green_spaces_geomap.update_geos(fitbounds="locations", visible=False)
 
+
+# Pollution
+pollution_data = pd.read_csv("data/pollutant/summary_of_pollutant_per_borough.csv")
+pollution_kind = list(pollution_data["pollutant"].unique())
+
 app = Dash(__name__)
 app.layout = html.Div(
     children=[
+        html.Div(
+            children=[
+                html.Div(dcc.Dropdown(pollution_kind, id="filter-pollution")),
+                html.Div(id="pollution-summary-per-borough"),
+            ]
+        ),
+        html.Div(children=[dcc.Graph(id="example-graph", figure=green_spaces_geomap)]),
         html.Div(
             children=[
                 html.Div(dcc.Dropdown(filter_disease, id="filter-disease")),
                 html.Div(id="diseases-incidence-per-year"),
             ]
         ),
-        html.Div(children=[dcc.Graph(id="example-graph", figure=green_spaces_geomap)]),
     ]
 )
 
 
 @app.callback(
+    Output("pollution-summary-per-borough", "children"),
+    Input("filter-pollution", "value"),
+)
+def update_pollutant_graph(value):
+    if value is None:
+        value = "CO2"
+    sm = pd.read_csv(
+        "data/pollutant/summary_of_pollutant_per_borough_{}.csv".format(value)
+    )
+    fig = go.Figure()
+    parameters = [
+        "motorcycle",
+        "taxi",
+        "petrol_car",
+        "diesel_car",
+        "electric_car",
+        "petrol_lgv",
+        "diesel_lgv",
+        "electric_lgv",
+        "total",
+    ]
+    for parameter in parameters:
+        fig.add_trace(
+            go.Scatter(
+                x=sm["borough"], y=sm[parameter], mode="lines+markers", name=parameter
+            )
+        )
+    return dcc.Graph(id="example-graph", figure=fig)
+
+
+@app.callback(
     Output("diseases-incidence-per-year", "children"), Input("filter-disease", "value")
 )
-def update_output(value):
+def update_disease_incidence_graph(value):
     if value is None:
         value = "2016"
     sm = pd.read_csv(
