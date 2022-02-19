@@ -39,6 +39,26 @@ green_spaces_geomap = px.choropleth(
 )
 green_spaces_geomap.update_geos(fitbounds="locations", visible=False)
 
+"""
+We only analyze NOx for this part
+"""
+nox_pollutant_summary_file_path = (
+    "data/pollutant/summary_of_pollutant_per_borough_NOx.csv"
+)
+nox_pollutant_summary_df = pd.read_csv(nox_pollutant_summary_file_path)
+nox_diseases_incident_file_path = (
+    "data/diseases-incidences/diseases_incidence_summary_2016.csv"
+)
+nox_diseases_incident_file_df = pd.read_csv(nox_diseases_incident_file_path)
+merged_pollutant_disease = nox_pollutant_summary_df.copy().merge(
+    nox_diseases_incident_file_df.copy(),
+    how="inner",
+    left_on=["borough", "year"],
+    right_on=["borough", "year"],
+)
+pollutant_disease_correlation = px.scatter(
+    merged_pollutant_disease, x="total", y="high_exposure", trendline="ols"
+)
 
 # Pollution
 pollution_data = pd.read_csv("data/pollutant/summary_of_pollutant_per_borough.csv")
@@ -51,6 +71,7 @@ app.layout = html.Div(
             children=[
                 html.Div(dcc.Dropdown(pollution_kind, id="filter-pollution")),
                 html.Div(id="pollution-summary-per-borough"),
+                html.Div(id="heat-map-per-borough"),
             ]
         ),
         html.Div(children=[dcc.Graph(id="example-graph", figure=green_spaces_geomap)]),
@@ -58,6 +79,14 @@ app.layout = html.Div(
             children=[
                 html.Div(dcc.Dropdown(filter_disease, id="filter-disease")),
                 html.Div(id="diseases-incidence-per-year"),
+            ]
+        ),
+        html.Div(
+            children=[
+                dcc.Graph(
+                    id="pollution-and-disease-relationship",
+                    figure=pollutant_disease_correlation,
+                )
             ]
         ),
     ]
@@ -92,6 +121,31 @@ def update_pollutant_graph(value):
                 x=sm["borough"], y=sm[parameter], mode="lines+markers", name=parameter
             )
         )
+    return dcc.Graph(id="example-graph", figure=fig)
+
+
+@app.callback(
+    Output("heat-map-per-borough", "children"),
+    Input("filter-pollution", "value"),
+)
+def update_pollutant_heat_map(value):
+    if value is None:
+        value = "CO2"
+    sm = pd.read_csv(
+        "data/pollutant/summary_of_pollutant_per_borough_{}.csv".format(value)
+    )
+    pollutant_area_geomap = merge_df_with_gis_data(map_df, sm, "borough")
+    fig = px.choropleth(
+        pollutant_area_geomap,
+        geojson=green_spaces_area_geomap["geometry"],
+        locations=green_spaces_area_geomap.index,
+        color="total",
+        projection="mercator",
+        title="Emission of {pollutant} from all vehicles in each borough in Greater London Area (GLA).".format(
+            pollutant=value
+        ),
+    )
+    fig.update_geos(fitbounds="locations", visible=False)
     return dcc.Graph(id="example-graph", figure=fig)
 
 
